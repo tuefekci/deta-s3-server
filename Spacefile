@@ -1,0 +1,14 @@
+# Spacefile Docs: https://go.deta.dev/docs/spacefile/v0
+v: 0
+micros:
+  - name: server
+    src: ./server
+    engine: nodejs16
+    primary: true
+    run: "node index.js"
+    dev: "nodemon index.js"
+    presets:
+      env:
+          - name: BUCKETS
+            description: S3 Buckets offered by the service
+            default: "test"
