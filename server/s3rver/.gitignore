@@ -1,0 +1,19 @@
+# Logs
+logs
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+.eslintcache
+
+# Coverage directory used by tools like istanbul
+.nyc_output/
+coverage/
+
+# Dependencies
+node_modules/
+
+# IDEs
+.idea
