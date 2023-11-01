@@ -1,6 +1,6 @@
 'use strict';
 
-const debug = true
+const debug = false
 
 const { Deta } = require('deta');
 if (debug) console.log("DETA_TOKEN", process.env.DETA_TOKEN)
@@ -50,21 +50,41 @@ class FilesystemStore {
     this.rootDirectory = rootDirectory;
   }
 
+
+  bucketlist = [];
+
+  getDetaBucketList() {
+
+    if(!this.bucketlist.length) {
+
+      // Set Buckets from BUCKETS ENV csv
+      var BUCKETS = process.env.BUCKETS.split(',').map(name => ({name})) || false;
+
+      for (const bucket of BUCKETS) {
+        this.bucketlist.push({
+          name: bucket.name,
+          creationDate: new Date() ,
+          stat: JSON.stringify({birthtime: new Date()}),
+        });
+
+        console.info('Bucket: ' + bucket.name + ' initialized.');
+      } 
+
+    }
+
+    return this.bucketlist;
+  }
+
   // helpers
   getBucketPath(bucketName) {
+    return "";
     return path.join(this.rootDirectory, bucketName);
   }
 
   getResourcePath(bucket, key = '', resource) {
-
-    console.log("getResourcePath ee", bucket, key, resource)
-
     const parts = FilesystemStore.encodeKeyPath(key).split('/');
     const suffix = format(S3RVER_SUFFIX, parts.pop(), resource);
-
-    console.log("getResourcePath", this.rootDirectory, bucket, ...parts, suffix);
-
-    return path.join(this.rootDirectory, bucket, ...parts, suffix);
+    return path.join(...parts, suffix);
   }
 
   /*
@@ -77,7 +97,7 @@ class FilesystemStore {
     const metadataPath = this.getResourcePath(bucket, key, 'metadata.json');
 
     // this is expected to throw if the object doesn't exist
-    // const fstat = await fs.stat(objectPath);
+    // const fstat = await .stat(objectPath);
 
     try {
 
@@ -106,7 +126,7 @@ class FilesystemStore {
   }
 
   /*
-  putMetadata to local file and to deta.Drive corresponding to bucket
+  putMetadata to deta.Drive corresponding to bucket
   */
   async putMetadata(bucket, key, metadata, md5) {
     const drive = deta.Drive(bucket);
@@ -119,18 +139,16 @@ class FilesystemStore {
       size: metadata['content-length'],
       mtime: new Date()
     };
-    if (md5) await fs.writeFile(md5Path, md5);
-    await fs.writeFile(metadataPath, JSON.stringify(json, null, 2));
     try {
-      if (md5) drive.put(md5Path, {path:md5Path});
-      drive.put(metadataPath, {path:metadataPath});
+      if (md5) drive.put(md5Path, {data:md5});
+      drive.put(metadataPath, {data:JSON.stringify(json, null, 2)});
     } catch (error) {
       if (debug) console.log("DETA ERROR::", error)
     }
   }
 
   /*
-  putContent to local file and to deta.Drive
+  putContent to deta.Drive
   */
   async putContent(objectPath, content, bucket) {
 
@@ -140,7 +158,7 @@ class FilesystemStore {
       const drive = deta.Drive(bucket)
       if (Buffer.isBuffer(content)) {
         drive.put(objectPath, {data: content, contentType:'binary/octet-stream'}).catch((err)=>{
-          console.log(err)
+          console.error(err)
         }).finally(()=>{
           md5Context.update(content);
           resolve([content.length, md5Context.digest('hex')])
@@ -165,7 +183,7 @@ class FilesystemStore {
         }
         //write to deta
         drive.put(objectPath, {data: result, contentType:'binary/octet-stream'}).catch((err)=>{
-          console.log(err)
+          console.error(err)
         }).finally(()=>{
           md5Context.update(result);
           resolve([result.length, md5Context.digest('hex')])
@@ -173,51 +191,22 @@ class FilesystemStore {
       }
     });
 
-    // do it again for local file write
-    return new Promise((resolve, reject) => {
-      const writeStream = createWriteStream(objectPath);
-      const md5Context = crypto.createHash('md5');
-
-      if (Buffer.isBuffer(content)) {
-        writeStream.end(content);
-        md5Context.update(content);
-        resolve([content.length, md5Context.digest('hex')]);
-      } else {
-        let totalLength = 0;
-        pipeline(
-          content,
-          new Transform({
-            transform(chunk, encoding, callback) {
-              md5Context.update(chunk, encoding);
-              totalLength += chunk.length;
-              callback(null, chunk);
-            },
-          }),
-          writeStream,
-          (err) =>
-            err
-              ? reject(err)
-              : resolve([totalLength, md5Context.digest('hex')]),
-        );
-      }
-    });
-
-
   }
   // store implementation
 
   reset() {
     if (debug) console.log("RESET called")
-    const list = readdirSync(this.rootDirectory);
+    //const list = readdirSync(this.rootDirectory);
     for (const file of list) {
-      rmdirSync(path.join(this.rootDirectory, file), { recursive: true });
+      //rmdirSync(path.join(this.rootDirectory, file), { recursive: true });
     }
   }
 
   async listBuckets() {
     if (debug) console.log("listBuckets called")
-    const base = deta.Base('s3rver')
-    let dlist = await base.get('bucketlist')
+    //const base = deta.Base('s3rver')
+    //let dlist = await base.get('bucketlist')
+    let dlist = this.getDetaBucketList();
     dlist = dlist.value.map((item, index)=>{
       return item.name
     })
@@ -231,12 +220,14 @@ class FilesystemStore {
   }
 
   async getBucket(bucket) {
-    const base = deta.Base('s3rver')
-    const bucketlist = await base.get('bucketlist')
+    //const base = deta.Base('s3rver')
+    //const detabucketlist = await base.get('bucketlist')
+    const bucketlist = this.getDetaBucketList();
+
     if (debug) console.log("getBucket called with ", bucket, bucketlist)
     if (bucketlist) {
       if (debug) console.log('list', bucketlist)
-      var bucketInfo = bucketlist.value.find((item) => {
+      var bucketInfo = bucketlist.find((item) => {
         if(item.name === bucket) {
           return true
         } else {
@@ -256,9 +247,10 @@ class FilesystemStore {
   }
 
   async putBucket(bucket) {
-    const base = deta.Base('s3rver')
+   // const base = deta.Base('s3rver')
     const drive = deta.Drive(bucket)
-    let bucketlist = await base.get('bucketlist')
+    //let bucketlist = await base.get('bucketlist')
+    let bucketlist = this.getDetaBucketList();
     if (debug) console.log('bucket list', bucketlist)
     if (debug) console.log('putBucket called with', bucket)
     const bucketPath = this.getBucketPath(bucket)
@@ -269,7 +261,7 @@ class FilesystemStore {
     /* check if bucketlist has any records */
     if(bucketlist) {
       /* if so, find if there is a matching name bucket and write the new stat to it */
-      let test = bucketlist.value.findIndex((value, index)=>{
+      let test = bucketlist.findIndex((value, index)=>{
         if (value.name === bucket) {
           value.stat = json
           return true
@@ -279,12 +271,12 @@ class FilesystemStore {
       })
       if (debug) console.log('bucket exists?', test)
       if(test === -1) {
-        bucketlist.value.push({name:bucket, stat:json})
+        bucketlist.push({name:bucket, stat:json})
       }
     } else {
       bucketlist = {value: [{name:bucket, stat:json}]}
     }
-    base.put(bucketlist.value, 'bucketlist')
+    //base.put(bucketlist.value, 'bucketlist')
     await ensureDir(bucketPath);
     return this.getBucket(bucket);
   }
@@ -292,7 +284,7 @@ class FilesystemStore {
   async deleteBucket(bucket) {
     const drive = deta.Drive(bucket);
     if (debug) console.log('deleteBucket called with ', bucket)
-    //return fs.rmdir(this.getBucketPath(bucket), { recursive: true });
+    //return .rmdir(this.getBucketPath(bucket), { recursive: true });
 
     console.warn("deleteBucket not implemented");
     return true;
@@ -318,36 +310,48 @@ class FilesystemStore {
       '/',
     );
 
-    const it = walk(bucketPath, (dirPath) => {
+    if (debug) console.log(bucketPath);
+    if (debug) console.log(options);
+    const it = [];
 
-      console.log("dirPath", dirPath)
+    //const driveList = [];
+  
+    const driveList = await drive.list({
+      prefix: prefixPath,
+      limit: maxKeys,
+    });
+
+    //console.log("driveList", driveList)
+
+    for await (const dirPath of driveList.names) {
+      let status = true;
+
       // avoid directories occurring before the startAfter parameter
       if (dirPath < startAfterPath && startAfterPath.indexOf(dirPath) === -1) {
-        return false;
+        status = false;
       }
-      if (dirPath.startsWith(prefixPath)) {
-        if (
-          delimiterEnc &&
-          dirPath.slice(prefixPath.length).indexOf(delimiterEnc) !== -1
-        ) {
-          // avoid directories occurring beneath a common prefix
-          return false;
-        }
-      } else if (!prefixPath.startsWith(dirPath)) {
-        // avoid directories that do not intersect with any part of the prefix
-        return false;
+
+      //console.log(dirPath, status)
+
+      if(status) {
+        it.push("/"+dirPath);
       }
-      return true;
-    });
+    }
+
+    //console.log("it", it)
 
     const commonPrefixes = new Set();
     const objectSuffix = format(S3RVER_SUFFIX, '', 'object');
     const keys = [];
     let isTruncated = false;
+
+    
     for (const keyPath of it) {
       if (!keyPath.endsWith(objectSuffix)) {
         continue;
       }
+
+      if (debug) console.log("keyPath", keyPath)
 
       const key = FilesystemStore.decodeKeyPath(
         keyPath.slice(bucketPath.length + 1, -objectSuffix.length),
@@ -374,12 +378,13 @@ class FilesystemStore {
       }
     }
 
-    console.log("keys", keys)
+    //console.log("keys", keys)
 
     const metadataArr = await Promise.all(
       keys.map((key) => {
-          console.log("getMetadata called with ", bucket, key);
-          this.getMetadata(bucket, key).catch((err) => {
+          //console.log("getMetadata called with ", bucket, key);
+          return this.getMetadata(bucket, key).catch((err) => {
+            console.error(err);
             if (err.code === 'ENOENT') return undefined;
             throw err;
           })
@@ -402,8 +407,13 @@ class FilesystemStore {
 
     console.warn("existsObject not properly implemented");
     try {
-      await fs.stat(objectPath);
-      return true;
+      const data = await drive.get(objectPath);
+
+      if(data) {
+        return true;
+      } else {
+        return false;
+      }
     } catch (err) {
       if (err.code === 'ENOENT') return false;
       throw err;
@@ -412,8 +422,8 @@ class FilesystemStore {
 
   async getObject(bucket, key, options) {
     const drive = deta.Drive(bucket);
-    drive.list().then((result)=>{if (debug) console.log(result)}).catch((err)=>{if (debug) console.log(err)})
-    if (debug) console.log("getObject called with", bucket, key, options)
+    //drive.list().then((result)=>{if (debug) console.log(result)}).catch((err)=>{if (debug) console.log(err)})
+    //console.log("getObject called with", bucket, key, options)
     try {
       const metadata = await this.getMetadata(bucket, key);
       const lastByte = Math.max(0, Number(metadata['content-length']) - 1);
@@ -431,10 +441,36 @@ class FilesystemStore {
         return object;
       }
 
-      var objectPath = this.getResourcePath(bucket, key, 'object')
-      const blob = await drive.get(objectPath)
-      const content = blob.stream()
+      //console.log("range", range);
+
       
+      var objectPath = this.getResourcePath(bucket, key, 'object')
+      const data = await drive.get(objectPath)
+      if(!data) return null
+
+      const arrayBuffer = await data.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      //const textData = buffer.toString('utf8');
+      //const content = buffer
+
+
+      const { Readable } = require('stream');
+      // Create a custom Readable stream
+      const bufferStream = new Readable();
+
+      // Implement the _read method to push the data from the Buffer to the stream
+      bufferStream._read = function() {
+        this.push(buffer);
+        this.push(null); // Signal the end of the stream
+      };
+
+      const content = bufferStream
+
+      //const content = buffer.stream()
+    
+
+
+
       const object = new S3Object(bucket, key, content, metadata);
       if (options && (options.start !== undefined || options.end)) {
         object.range = range;
@@ -474,7 +510,7 @@ class FilesystemStore {
 
     if (srcObjectPath !== destObjectPath) {
       await ensureDir(path.dirname(destObjectPath));
-      await fs.copyFile(srcObjectPath, destObjectPath);
+      //await fs.copyFile(srcObjectPath, destObjectPath);
     }
 
     if (replacementMetadata) {
@@ -482,6 +518,7 @@ class FilesystemStore {
       return this.getMetadata(destBucket, destKey);
     } else {
       if (srcObjectPath !== destObjectPath) {
+        /*
         await Promise.all([
           fs.copyFile(
             this.getResourcePath(srcBucket, srcKey, 'metadata.json'),
@@ -492,6 +529,7 @@ class FilesystemStore {
             this.getResourcePath(destBucket, destKey, 'object.md5'),
           ),
         ]);
+        */
       }
       return this.getMetadata(destBucket, destKey);
     }
@@ -504,27 +542,35 @@ class FilesystemStore {
         this.getResourcePath(bucket, key, 'object'),
         this.getResourcePath(bucket, key, 'object.md5'),
         this.getResourcePath(bucket, key, 'metadata.json'),
-      ].map((filePath) =>
-        fs.unlink(filePath).catch((err) => {
+      ].map((filePath) => {
+        drive.delete(filePath).catch((err) => {
           if (err.code !== 'ENOENT') throw err;
-        }),
-      ),
+        })
+      }),
     );
+
+    
     // clean up empty directories
     const bucketPath = this.getBucketPath(bucket);
     const parts = key.split('/');
     // the last part isn't a directory (it's embedded into the file name)
     parts.pop();
+
+    console.warn("deleteObject not properly implemented / clean up empty directories missing!");
+
+    /*
     while (
       parts.length &&
       !readdirSync(path.join(bucketPath, ...parts)).length
     ) {
       await fs.rmdir(path.join(bucketPath, ...parts));
       parts.pop();
-    }
+    }*/
   }
 
   async initiateUpload(bucket, key, uploadId, metadata) {
+    const drive = deta.Drive(bucket);
+
     const uploadDir = path.join(
       this.getResourcePath(bucket, undefined, 'uploads'),
       uploadId,
@@ -533,8 +579,8 @@ class FilesystemStore {
     await ensureDir(uploadDir);
 
     await Promise.all([
-      fs.writeFile(path.join(uploadDir, 'key'), key),
-      fs.writeFile(path.join(uploadDir, 'metadata'), JSON.stringify(metadata)),
+      drive.put(path.join(uploadDir, 'key'), {data: key}),
+      drive.put(path.join(uploadDir, 'metadata'), {data: JSON.stringify(metadata)})
     ]);
   }
 
@@ -550,7 +596,9 @@ class FilesystemStore {
     await ensureDir(path.dirname(partPath));
 
     const [size, md5] = await this.putContent(partPath, content, bucket);
-    await fs.writeFile(`${partPath}.md5`, md5);
+
+    await drive.put(`${partPath}.md5`, {data:md5});
+
     if (debug) console.log("putPart called with ", {size, md5})
     return { size, md5 };
   }
@@ -563,8 +611,8 @@ class FilesystemStore {
       uploadId,
     );
     const [key, metadata] = await Promise.all([
-      fs.readFile(path.join(uploadDir, 'key')).then((data) => data.toString()),
-      fs.readFile(path.join(uploadDir, 'metadata')).then(JSON.parse),
+      drive.get(path.join(uploadDir, 'key')).then((data) => data.toString()),
+      drive.get(path.join(uploadDir, 'metadata')).then(JSON.parse),
     ]);
     const partStreams = sortBy(parts, (part) => part.number).map((part) =>
       createReadStream(path.join(uploadDir, part.number.toString())),
@@ -576,7 +624,7 @@ class FilesystemStore {
       metadata,
     );
     const result = await this.putObject(object);
-    await fs.rmdir(uploadDir, { recursive: true });
+    //await .rmdir(uploadDir, { recursive: true });
     if (debug) console.log("putObjectMultipart returns ", result)
     return result;
   }
@@ -592,9 +640,11 @@ class FilesystemStore {
     const Model = getConfigModel(resourceType);
 
     try {
-      const data = await fs.readFile(resourcePath);
+      const data = await drive.get(resourcePath);
+      if(!data) return null
       return new Model(data.toString());
     } catch (err) {
+      console.error(err);
       if (err.code === 'ENOENT') return null;
       throw err;
     }
@@ -608,7 +658,7 @@ class FilesystemStore {
       key,
       `${resource.type}.xml`,
     );
-    await fs.writeFile(resourcePath, resource.toXML(2));
+    await drive.put(resourcePath, {data:resource.toXML(2)});
   }
 
   async deleteSubresource(bucket, key, resourceType) {
@@ -620,7 +670,7 @@ class FilesystemStore {
       `${resourceType}.xml`,
     );
     try {
-      await fs.unlink(resourcePath);
+      await drive.delete(resourcePath);
     } catch (err) {
       if (err.code !== 'ENOENT') throw err;
     }

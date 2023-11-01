@@ -15,8 +15,13 @@ const vhostMiddleware = require('./middleware/vhost');
 const { getConfigModel } = require('./models/config');
 const S3Error = require('./models/error');
 const FilesystemStore = require('./stores/filesystem');
+const AccountStore = require('./models/account');
 const router = require('./routes');
 const { getXmlRootTag } = require('./utils');
+
+const defaultAccountId = 123456789000;
+const defaultAccountDisplayName = 'Deta-S3-Server';
+
 
 class S3rver extends Koa {
   constructor(options) {
@@ -30,6 +35,8 @@ class S3rver extends Koa {
       allowMismatchedSignatures,
       vhostBuckets,
       configureBuckets,
+      defaultAccessKeyId,
+      defaultSecretAccessKey,
       ...serverOptions
     } = defaults({}, options, S3rver.defaultOptions);
     this.serverOptions = serverOptions;
@@ -38,6 +45,16 @@ class S3rver extends Koa {
     this.resetOnClose = resetOnClose;
     this.allowMismatchedSignatures = allowMismatchedSignatures;
     this.store = this.context.store = new FilesystemStore(directory);
+
+    this.accounts = new AccountStore();
+
+    // create a default account
+    this.accounts.addAccount(defaultAccountId, defaultAccountDisplayName);
+    this.accounts.addKeyPair(
+      defaultAccountId,
+      defaultAccessKeyId,
+      defaultSecretAccessKey,
+    );
 
     // Log all requests
     this.use(loggerMiddleware(this, silent));
@@ -216,6 +233,8 @@ S3rver.defaultOptions = {
   allowMismatchedSignatures: false,
   vhostBuckets: true,
   configureBuckets: [],
+  defaultAccessKeyId: 'DETAS3RVER',
+  defaultSecretAccessKey: 'DETAS3RVER',
 };
 S3rver.prototype.getMiddleware = S3rver.prototype.callback;
 

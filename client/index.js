@@ -1,7 +1,9 @@
 var knox = require('knox');
+var fs = require('fs');
+
 const client = knox.createClient({
-  key: 'S3RVER',
-  secret: 'S3RVER',
+  key: 'DETAS3RVER',
+  secret: 'DETAS3RVER',
   bucket: 'test',
   endpoint: 'localhost',
   style: 'path',
@@ -25,29 +27,76 @@ req.on('response', function(res){
 });
 req.end(string);
 
+fs.stat(__dirname + '/logo.png', function(err, stat){
 
-client.list({}, function(err, data){
-	console.log(data);
+	if(err) return console.log(err);
+
+	var req = client.put('/logo.png', {
+		'Content-Length': stat.size
+	  , 'Content-Type': 'image/png'
+	});
   
-	/* `data` will look roughly like:
-
-
-	{
-	  Prefix: 'my-prefix',
-	  IsTruncated: true,
-	  MaxKeys: 1000,
-	  Contents: [
-		{
-		  Key: 'whatever'
-		  LastModified: new Date(2012, 11, 25, 0, 0, 0),
-		  ETag: 'whatever',
-		  Size: 123,
-		  Owner: 'you',
-		  StorageClass: 'whatever'
-		},
-		⋮
-	  ]
-	}
+	fs.createReadStream(__dirname + '/logo.png').pipe(req);
   
-	*/
+	req.on('response', function(res){
+	  // ...
+	});
   });
+
+  fs.stat(__dirname + '/logo2.png', function(err, stat){
+
+	if(err) return console.log(err);
+
+	var req = client.put('/logo2.png', {
+		'Content-Length': stat.size
+	  , 'Content-Type': 'image/png'
+	});
+  
+	fs.createReadStream(__dirname + '/logo2.png').pipe(req);
+  
+	req.on('response', function(res){
+	  // ...
+	});
+  });
+
+
+
+
+	client.list({}, function(err, data){
+		console.log(data);
+	});
+
+
+  client.get(objPath).on('response', function(res){
+	console.log(res.statusCode);
+	console.log(res.headers);
+	res.setEncoding('utf8');
+	res.on('data', function(chunk){
+	  console.log(chunk);
+	});
+
+	const fileStream = fs.createWriteStream(__dirname + '/obj-text.json');
+	res.pipe(fileStream);
+
+	res.on('end', function(){
+		fileStream.end(); // Close the file stream when the response ends
+		console.log('File downloaded successfully');
+	});
+
+  }).end();
+
+
+  client.get("logo.png").on('response', function(res){
+	console.log(res.statusCode);
+	console.log(res.headers);
+
+	const fileStream = fs.createWriteStream(__dirname + '/logo_down.png');
+	res.pipe(fileStream);
+
+	res.on('end', function(){
+		fileStream.end(); // Close the file stream when the response ends
+		console.log('File downloaded successfully');
+	});
+  }).end();
+  
+

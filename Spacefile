@@ -1,14 +1,21 @@
 # Spacefile Docs: https://go.deta.dev/docs/spacefile/v0
 v: 0
+icon: ./icon.png
+app_name: "S3 Server"
 micros:
   - name: server
     src: ./server
     engine: nodejs16
     primary: true
+    public: true
     run: "node index.js"
     dev: "nodemon index.js"
     presets:
       env:
           - name: BUCKETS
             description: S3 Buckets offered by the service
-            default: "test"
+            default: "test,assets,website"
+          - name: KEY
+            description: Access Key
+          - name: SECRET
+            description: Secret Key

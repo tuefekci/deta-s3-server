@@ -2,16 +2,35 @@
 
 const Busboy = require('busboy');
 const crypto = require('crypto');
-const { once } = require('events');
+const xmlParser = require('fast-xml-parser');
+const he = require('he');
 const { URL } = require('url');
 
-const { DUMMY_ACCOUNT } = require('../models/account');
 const S3Error = require('../models/error');
 const S3Event = require('../models/event');
 const S3Object = require('../models/object');
 const { TaggingConfiguration } = require('../models/config');
-const { capitalizeHeader, utf8BodyParser, xmlBodyParser } = require('../utils');
-const { aws4SignatureBodyParser } = require('../signature/v4');
+const { capitalizeHeader, once, utf8BodyParser } = require('../utils');
+
+async function xmlBodyParser(ctx) {
+  const { req } = ctx;
+  const xmlString = await new Promise((resolve, reject) => {
+    let payload = '';
+    req.on('data', (data) => (payload += data.toString('utf8')));
+    req.on('end', () => resolve(payload));
+    req.on('error', reject);
+  });
+  if (xmlParser.validate(xmlString) !== true) {
+    throw new S3Error(
+      'MalformedXML',
+      'The XML you provided was not well-formed or did not validate against ' +
+        'our published schema.',
+    );
+  }
+  ctx.request.body = xmlParser.parse(xmlString, {
+    tagValueProcessor: (a) => he.decode(a),
+  });
+}
 
 function triggerS3Event(ctx, eventData) {
   ctx.app.emit(
@@ -189,8 +208,9 @@ exports.getObjectAcl = async function getObjectAcl(ctx) {
     AccessControlPolicy: {
       '@': { xmlns: 'http://doc.s3.amazonaws.com/2006-03-01/' },
       Owner: {
-        ID: DUMMY_ACCOUNT.id,
-        DisplayName: DUMMY_ACCOUNT.displayName,
+        // we assume the objects are owned by the fetching user since we don't store owner metadata with objects
+        ID: ctx.state.account.id,
+        DisplayName: ctx.state.account.displayName,
       },
       AccessControlList: {
         Grant: {
@@ -439,11 +459,10 @@ exports.postObject = async function postObject(ctx) {
  * {@link https://docs.aws.amazon.com/AmazonS3/latest/API/RESTObjectPUT.html}
  */
 exports.putObject = async function putObject(ctx) {
-  aws4SignatureBodyParser(ctx);
   const object = new S3Object(
     ctx.params.bucket,
     ctx.params.key,
-    ctx.request.body,
+    ctx.req,
     ctx.headers,
   );
   try {
@@ -691,13 +710,12 @@ exports.initiateMultipartUpload = async function initiateMultipartUpload(ctx) {
  * {@link https://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadUploadPart.html}
  */
 exports.uploadPart = async function uploadPart(ctx) {
-  aws4SignatureBodyParser(ctx);
   try {
     const { md5 } = await ctx.store.putPart(
       ctx.params.bucket,
       ctx.query.uploadId,
       ctx.query.partNumber,
-      ctx.request.body,
+      ctx.req,
     );
     ctx.logger.info(
       'Stored part %s of %s in bucket "%s" successfully',
@@ -710,91 +728,6 @@ exports.uploadPart = async function uploadPart(ctx) {
   } catch (err) {
     ctx.logger.error(
       'Error uploading part %s of %s to bucket "%s"',
-      ctx.query.partNumber,
-      ctx.query.uploadId,
-      ctx.params.bucket,
-      err,
-    );
-    throw err;
-  }
-};
-
-exports.uploadPartCopy = async function uploadPartCopy(ctx) {
-  let copySource = decodeURI(ctx.headers['x-amz-copy-source']);
-  copySource = copySource.startsWith('/') ? copySource.slice(1) : copySource;
-  let [srcBucket, ...srcKey] = copySource.split('/');
-  srcKey = srcKey.join('/');
-
-  const bucket = await ctx.store.getBucket(srcBucket);
-  if (!bucket) {
-    ctx.logger.error('No bucket found for "%s"', srcBucket);
-    throw new S3Error('NoSuchBucket', 'The specified bucket does not exist', {
-      BucketName: srcBucket,
-    });
-  }
-
-  const options = {};
-  if ('x-amz-copy-source-range' in ctx.headers) {
-    const match = /^bytes=(\d+)-(\d+)$/.exec(
-      ctx.headers['x-amz-copy-source-range'],
-    );
-    if (!match) {
-      throw new S3Error(
-        'InvalidArgument',
-        'The x-amz-copy-source-range value must be of the form bytes=first-last where first and last are the zero-based offsets of the first and last bytes to copy',
-        {
-          ArgumentName: 'x-amz-copy-source-range',
-          ArgumentValue: ctx.get('x-amz-copy-source-range'),
-        },
-      );
-    }
-    options.start = Number(match[1]);
-    options.end = Number(match[2]);
-  }
-
-  const object = await ctx.store.getObject(srcBucket, srcKey, options);
-  if (!object) {
-    throw new S3Error('NoSuchKey', 'The specified key does not exist.', {
-      Key: srcKey,
-    });
-  }
-
-  // Range request was out of range
-  if (object.range && (!object.content || object.range.end < options.end)) {
-    if (object.content) object.content.destroy();
-    throw new S3Error(
-      'InvalidArgument',
-      `Range specified is not valid for source object of size: ${object.size}`,
-      {
-        ArgumentName: 'x-amz-copy-source-range',
-        ArgumentValue: ctx.get('x-amz-copy-source-range'),
-      },
-    );
-  }
-
-  try {
-    const { md5 } = await ctx.store.putPart(
-      ctx.params.bucket,
-      ctx.query.uploadId,
-      ctx.query.partNumber,
-      object.content,
-    );
-    ctx.logger.info(
-      'Copied part %s of %s in bucket "%s" successfully',
-      ctx.query.partNumber,
-      ctx.query.uploadId,
-      ctx.params.bucket,
-    );
-    ctx.etag = md5;
-    ctx.body = {
-      CopyPartResult: {
-        LastModified: new Date().toISOString(),
-        ETag: JSON.stringify(md5),
-      },
-    };
-  } catch (err) {
-    ctx.logger.error(
-      'Error copying part %s of %s to bucket "%s"',
       ctx.query.partNumber,
       ctx.query.uploadId,
       ctx.params.bucket,

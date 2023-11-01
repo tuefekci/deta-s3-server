@@ -179,5 +179,7 @@ exports.ensureDir = async function (dirPath) {
   if (process.platform === 'win32') {
     delete options.mode;
   }
-  await fs.promises.mkdir(dirPath, options);
+
+  return true;
+  //await fs.promises.mkdir(dirPath, options);
 };
