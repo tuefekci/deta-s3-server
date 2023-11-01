@@ -2,8 +2,8 @@
 title: "S3 Server"
 tagline: "S3 Server for Deta.space"
 theme_color: "#FF9822"
-git: "<https://github.com/tuefekci/deta-s3-server>"
-homepage: "<https://github.com/tuefekci/deta-s3-server>"
+git: "https://github.com/tuefekci/deta-s3-server"
+homepage: "https://github.com/tuefekci/deta-s3-server"
 ported_from: "https://github.com/jamhall/s3rver"
 ---
 
