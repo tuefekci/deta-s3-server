@@ -28,6 +28,8 @@ const base = deta.Base('s3rver');
 var BUCKETS = process.env.BUCKETS.split(',').map(name => ({name})) || false;
 
 
+console.log("isMicro", isMicro);
+
 var key = process.env.DETA_PROJECT_KEY;
 var secret = process.env.DETA_PROJECT_KEY;
 
@@ -39,8 +41,10 @@ if(process.env.SECRET) {
   secret = process.env.SECRET;
 }
 
-console.log("key: ", key);
-console.log("secret: ", secret);
+if(!isMicro) {
+  key = 'DETAS3RVER';
+  secret = 'DETAS3RVER';
+}
 
 const s3rver = new S3rver({
   port: port,

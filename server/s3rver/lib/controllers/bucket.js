@@ -232,6 +232,7 @@ exports.getBucket = async function getBucket(ctx) {
       result.objects.length,
       ctx.params.bucket,
     );
+
     ctx.body = {
       ListBucketResult: {
         '@': { xmlns: 'http://doc.s3.amazonaws.com/2006-03-01/' },

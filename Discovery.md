@@ -28,6 +28,14 @@ All endpoints are public. No authentication required. This also means all your d
 ## Limits
 - Max file size: 5MB (Deta Payload Size limit, if the payload limit changes it will be the drive file size limit) // There is perhaps a way to bypass this limit by chunking which would work in some scenarios but i have not implemented it yet because uploads or downloads are not really an issue but the micro limits are. So if you store bigger files just split them up into smaller files.
 
+## Nice to have
+Feel free to request more in the issues, build this for my own use case but i am happy to add more features if they are useful for others as well.
+- Multiple Users
+- Access Control
+- Dynamic Bucket Creation
+- ACP
+- Stats
+
 ## Known Issues
 - No support for Website Hosting // never used it so im not sure what to look for
 - No support for multipart uploads // not implemented yet
