@@ -441,17 +441,37 @@ class FilesystemStore {
         return object;
       }
 
-      //console.log("range", range);
-
-      
       var objectPath = this.getResourcePath(bucket, key, 'object')
+      const url = drive.requests.requestConfig.baseURL+"/files/download?name="+objectPath;
+      const rangeHeader = `bytes=${range.start}-${range.end}`;
+
+      const response  = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'X-API-Key': deta.key,
+          'Range': rangeHeader,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      
+
+
+      /*
       const data = await drive.get(objectPath)
       if(!data) return null
 
       const arrayBuffer = await data.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
       //const textData = buffer.toString('utf8');
-      //const content = buffer
+      //const content = buffer*/
 
 
       const { Readable } = require('stream');
@@ -468,9 +488,6 @@ class FilesystemStore {
 
       //const content = buffer.stream()
     
-
-
-
       const object = new S3Object(bucket, key, content, metadata);
       if (options && (options.start !== undefined || options.end)) {
         object.range = range;

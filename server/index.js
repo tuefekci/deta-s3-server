@@ -28,7 +28,10 @@ const base = deta.Base('s3rver');
 var BUCKETS = process.env.BUCKETS.split(',').map(name => ({name})) || false;
 
 
-console.log("isMicro", isMicro);
+if(!process.env.DETA_PROJECT_KEY) {
+  console.error("DETA_PROJECT_KEY is required");
+  process.exit(1);
+}
 
 var key = process.env.DETA_PROJECT_KEY;
 var secret = process.env.DETA_PROJECT_KEY;
@@ -61,7 +64,7 @@ const s3rver = new S3rver({
 app.use(cors());
 // S3 API middleware
 app.all('*', (req, res) => {
-    //console.log(req.method, req.url, req.headers)
+    console.log(req.method, req.url, req.headers)
     s3rver.getMiddleware()(req, res);
 });
 

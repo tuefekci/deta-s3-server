@@ -4,44 +4,43 @@ tagline: "S3 Server for Deta.space"
 theme_color: "#FF9822"
 git: "https://github.com/tuefekci/deta-s3-server"
 homepage: "https://github.com/tuefekci/deta-s3-server"
-ported_from: "https://github.com/jamhall/s3rver"
 ---
 
-# ATTENTION:
-- This is alpha software not tested in production. Use at your own risk. If you find any bugs please open an issue or contribute to the project. 
-- There is no Access Control to view data implemented yet. This means all your data is accessible by anyone. So only use this if the data you are storing is public anyway. Uploads are not possible without the Access Key and Secret.
+# **ATTENTION:**
+- **Caution:** This software is in its alpha stage and has not been tested in a production environment. Use it at your own risk. If you encounter any bugs, please open an issue or contribute to the project.
+- **No Access Control:** Access control to view data has not been implemented yet. This means that all your data is accessible to anyone. Only use this if the data you are storing is meant to be public. Uploads are not possible without the Access Key and Secret.
 
-# S3 Server	
-S3 Server for Deta.space (Deta Drive) written in NodeJS based on jamhall/s3rver. This is a simple S3 Server that uses Deta Drive as a backend. It is not a full S3 implementation.
+# **S3 Server**
+S3 Server for Deta.space (Deta Drive), written in NodeJS and based on jamhall/s3rver. This is a simple S3 Server that utilizes Deta Drive as a backend, but please note that it is not a full S3 implementation.
 
-## Usage
-You need to Edit the Environment Variables via Configuration
-- BUCKET_NAME: Names of the Bucket/Deta Drives you want to use, comma separated
-- KEY: Access Key
-- SECRET: Access Secret
+## **Usage**
+You need to edit the environment variables via configuration:
+- `BUCKETS`: Names of the Bucket/Deta Drives you want to use, separated by commas.
+- `KEY`: Access Key.
+- `SECRET`: Access Secret.
 
-If key or secret is empty it will use as the default key/secret DETA_PROJECT_KEY but you should not use this in production.
+If the key or secret is empty, it will default to using `DETA_PROJECT_KEY`, but it is not recommended for production use.
 
-## Endpoints
-All endpoints are public. No authentication required. This also means all your data is accessible!!!
+## **Endpoints**
+All endpoints are public, and no authentication is required. This also means that all your data is accessible.
 
-## Limits
-- Max file size: 5MB (Deta Payload Size limit, if the payload limit changes it will be the drive file size limit) // There is perhaps a way to bypass this limit by chunking which would work in some scenarios but i have not implemented it yet because uploads or downloads are not really an issue but the micro limits are. So if you store bigger files just split them up into smaller files.
+## **Limits**
+- **No Access Control:** Access control is not yet implemented, which means that all your data is accessible to anyone. Only use this if the data you are storing is meant to be public. Uploads are not possible without the Access Key and Secret.
 
-## Nice to have
-Feel free to request more in the issues, build this for my own use case but i am happy to add more features if they are useful for others as well.
+## **Nice to Have**
+Feel free to request more features through the issues. I built this for my own use case but I am willing to add more features if they are useful for others as well.
 - Multiple Users
 - Access Control
 - Dynamic Bucket Creation
-- ACP
+- ACP (Access Control Policies)
 - Stats
 
-## Known Issues
-- No support for Website Hosting // never used it so im not sure what to look for
-- No support for multipart uploads // not implemented yet
-- No support for Bucket creation via API use the ENV Variable BUCKET to assign buckets // This is not a technical problem it is to safe on calls to base and make everything faster.
-- No support for ACL // not implemented yet
-- No support for Versioning // not implemented yet
-- No support for CORS // not implemented yet
-- No support for Bucket Policies // not implemented yet
-- No support for the copy (copying files from one bucket to another or in the same bucket) // This is not possible directly with Deta Drive and implementing it would require a workaround
+## **Known Issues**
+- **No Support for Website Hosting:** Website hosting is not supported as it has never been used, and I am not sure what to look for.
+- **No Support for Multipart Uploads:** Multipart uploads are not implemented yet.
+- **No Support for Bucket Creation via API:** Use the environment variable `BUCKET` to assign buckets; this is not a technical problem but is meant to save on calls to the base and improve performance.
+- **No Support for ACL (Access Control List):** ACL is not implemented yet.
+- **No Support for Versioning:** Versioning is not implemented yet.
+- **No Support for CORS (Cross-Origin Resource Sharing):** CORS is not implemented yet.
+- **No Support for Bucket Policies:** Bucket policies are not implemented yet.
+- **No Support for Copying Files:** Copying files from one bucket to another or within the same bucket is not possible directly with Deta Drive, and implementing it would require a workaround.
