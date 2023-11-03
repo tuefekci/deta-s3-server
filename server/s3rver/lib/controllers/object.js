@@ -137,7 +137,7 @@ exports.getObject = async function getObject(ctx) {
   const options = {};
 
    // Calculate the maximum response size (2MB) and limit the response size.
-   const maxResponseSize = 1024 * 1024 * 2; // 2MB
+   const maxResponseSize = 1024 * 1024 * 0.5; // 2MB
 
   if (/^bytes=/.test(ctx.headers.range)) {
     const [start, end] = ctx.headers.range.replace('bytes=', '').split('-');
