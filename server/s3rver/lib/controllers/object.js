@@ -135,10 +135,19 @@ exports.deleteObject = async function deleteObject(ctx) {
  */
 exports.getObject = async function getObject(ctx) {
   const options = {};
+
   if (/^bytes=/.test(ctx.headers.range)) {
     const [start, end] = ctx.headers.range.replace('bytes=', '').split('-');
     options.start = Number(start);
-    if (end) options.end = Number(end);
+    
+    // Calculate the maximum range size (5MB) and limit the end if needed.
+    const maxRangeSize = 5242880; // 5MB
+    if (end) {
+      const requestedEnd = Number(end);
+      options.end = Math.min(requestedEnd, options.start + maxRangeSize - 1);
+    } else {
+      options.end = options.start + maxRangeSize - 1;
+    }
   }
 
   const key = ctx.params.key;
@@ -195,6 +204,7 @@ exports.getObject = async function getObject(ctx) {
     ctx.body = object.content;
   }
 };
+
 
 /**
  * GET Object ACL

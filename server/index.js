@@ -64,7 +64,7 @@ const s3rver = new S3rver({
 app.use(cors());
 // S3 API middleware
 app.all('*', (req, res) => {
-    console.log(req.method, req.url, req.headers)
+    //console.log(req.method, req.url, req.headers)
     s3rver.getMiddleware()(req, res);
 });
 
