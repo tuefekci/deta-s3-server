@@ -14,6 +14,14 @@
  */
 exports.getService = async function getService(ctx) {
   const buckets = await ctx.store.listBuckets();
+
+  if(!ctx.state.account) {
+    ctx.state.account = {
+      id: 'anonymous',
+      displayName: 'anonymous',
+    }
+  }
+  
   ctx.logger.info('Fetched %d buckets', buckets.length);
   ctx.body = {
     ListAllMyBucketsResult: {

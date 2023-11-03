@@ -207,7 +207,7 @@ class FilesystemStore {
     //const base = deta.Base('s3rver')
     //let dlist = await base.get('bucketlist')
     let dlist = this.getDetaBucketList();
-    dlist = dlist.value.map((item, index)=>{
+    dlist = dlist.map((item, index)=>{
       return item.name
     })
     if (debug) console.log("readdir")

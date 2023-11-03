@@ -233,6 +233,13 @@ exports.getBucket = async function getBucket(ctx) {
       ctx.params.bucket,
     );
 
+    if(!ctx.state.account) {
+      ctx.state.account = {
+        id: 'anonymous',
+        displayName: 'anonymous',
+      }
+    }
+
     ctx.body = {
       ListBucketResult: {
         '@': { xmlns: 'http://doc.s3.amazonaws.com/2006-03-01/' },
