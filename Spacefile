@@ -15,6 +15,9 @@ micros:
           - name: BUCKETS
             description: S3 Buckets offered by the service
             default: "test,assets,website"
+          - name: maxResponseSize
+            description: maxResponseSize in MB
+            default: "2"
           - name: KEY
             description: Access Key
           - name: SECRET

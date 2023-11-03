@@ -136,8 +136,8 @@ exports.deleteObject = async function deleteObject(ctx) {
 exports.getObject = async function getObject(ctx) {
   const options = {};
 
-   // Calculate the maximum response size (2MB) and limit the response size.
-   const maxResponseSize = 1024 * 1024 * 0.5; // 2MB
+   // limit the response size.
+   const maxResponseSize = parseInt(process.env.maxResponseSize);
 
   if (/^bytes=/.test(ctx.headers.range)) {
     const [start, end] = ctx.headers.range.replace('bytes=', '').split('-');

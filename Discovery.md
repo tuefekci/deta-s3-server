@@ -16,6 +16,7 @@ S3 Server for Deta.space (Deta Drive), written in NodeJS and based on jamhall/s3
 ## **Usage**
 You need to edit the environment variables via configuration:
 - `BUCKETS`: Names of the Bucket/Deta Drives you want to use, separated by commas.
+- `maxResponseSize`: Maximum size of the response in MB. Default: (2MB)
 - `KEY`: Access Key.
 - `SECRET`: Access Secret.
 

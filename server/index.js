@@ -36,6 +36,21 @@ if(!process.env.DETA_PROJECT_KEY) {
 var key = process.env.DETA_PROJECT_KEY;
 var secret = process.env.DETA_PROJECT_KEY;
 
+if(!process.env.maxResponseSize) {
+  process.env.maxResponseSize = 1024 * 1024 * 2;
+  console.warn("maxResponseSize not set, defaulting to 2MB");
+} else {
+  let maxResponseSize = parseInt(process.env.maxResponseSize);
+
+  // Limit to 4MB due to Deta Micro 5MB Payload limit
+  if(maxResponseSize > 4) {
+    maxResponseSize = 4;
+  }
+
+  process.env.maxResponseSize = maxResponseSize * 1024 * 1024;
+}
+
+
 if(process.env.KEY) {
   key = process.env.KEY;
 }
